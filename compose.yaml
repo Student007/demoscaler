@@ -1,0 +1,65 @@
+name: demoscale
+
+services:
+  queue:
+    image: redis:7.4.2-alpine3.21
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - queue-data:/data
+    networks: [scale-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  producer:
+    image: danbu/demoscale:demoscale-producer-1.0.0
+    environment:
+      REDIS_HOST: queue
+      QUEUE_KEY: jobs
+      JOB_COUNT_DEFAULT: "12"
+    expose: ["8000"]
+    networks: [scale-net]
+    depends_on:
+      queue:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  dashboard:
+    container_name: demoscale
+    image: danbu/demoscale:demoscale-dashboard-1.0.0
+    environment:
+      REDIS_HOST: queue
+      QUEUE_KEY: jobs
+      PRODUCER_URL: http://producer:8000
+    ports: ["8080:8080"]
+    networks: [scale-net]
+    depends_on:
+      producer:
+        condition: service_healthy
+      queue:
+        condition: service_healthy
+
+  worker:
+    image: danbu/demoscale:demoscale-worker-1.0.0
+    environment:
+      REDIS_HOST: queue
+      QUEUE_KEY: jobs
+      PROCESS_SECONDS: "2"
+    networks: [scale-net]
+    depends_on:
+      queue:
+        condition: service_healthy
+
+volumes:
+  queue-data:
+    name: demoscale-queue
+
+networks:
+  scale-net:
+    name: demoscale-net
