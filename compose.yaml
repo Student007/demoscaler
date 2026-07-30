@@ -2,6 +2,8 @@ name: demoscale
 
 services:
   queue:
+    # Redis ist die gemeinsame Queue. Der feste Tag macht die Übung zeitlich
+    # nachvollziehbar; der Host veröffentlicht den Redis-Port absichtlich nicht.
     image: redis:7.4.2-alpine3.21
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -14,11 +16,19 @@ services:
       retries: 10
 
   producer:
-    image: danbu/demoscale:demoscale-producer-1.0.0
+    # Die drei eigenen Images können lokal gebaut oder mit docker-bake.hcl
+    # als Multi-Platform-Images auf Docker Hub veröffentlicht werden.
+    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-producer-${IMAGE_TAG:-1.2.8}
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
     environment:
+      ORCHESTRATOR: compose
+      NODE_NAME: ${COMPOSE_NODE_NAME:-local-engine}
       REDIS_HOST: queue
       QUEUE_KEY: jobs
-      JOB_COUNT_DEFAULT: "12"
+      JOB_COUNT_DEFAULT: ${JOB_COUNT:-12}
     expose: ["8000"]
     networks: [scale-net]
     depends_on:
@@ -31,13 +41,22 @@ services:
       retries: 10
 
   dashboard:
+    # Der sichtbare Webcontainer bekommt bewusst den festen Namen demoscale.
+    # Worker bleiben ohne container_name, damit --scale worker=N möglich ist.
     container_name: demoscale
-    image: danbu/demoscale:demoscale-dashboard-1.0.0
+    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-dashboard-${IMAGE_TAG:-1.2.8}
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
     environment:
+      ORCHESTRATOR: compose
+      NODE_NAME: ${COMPOSE_NODE_NAME:-local-engine}
       REDIS_HOST: queue
       QUEUE_KEY: jobs
       PRODUCER_URL: http://producer:8000
-    ports: ["8080:8080"]
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"
     networks: [scale-net]
     depends_on:
       producer:
@@ -46,11 +65,17 @@ services:
         condition: service_healthy
 
   worker:
-    image: danbu/demoscale:demoscale-worker-1.0.0
+    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-worker-${IMAGE_TAG:-1.2.8}
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
     environment:
+      ORCHESTRATOR: compose
+      NODE_NAME: ${COMPOSE_NODE_NAME:-local-engine}
       REDIS_HOST: queue
       QUEUE_KEY: jobs
-      PROCESS_SECONDS: "2"
+      PROCESS_SECONDS: ${PROCESS_SECONDS:-2}
     networks: [scale-net]
     depends_on:
       queue:
@@ -58,6 +83,8 @@ services:
 
 volumes:
   queue-data:
+    # Der feste Named-Volume-Name macht den Zustand in docker volume inspect
+    # sichtbar und erleichtert die Gegenüberstellung von down und down -v.
     name: demoscale-queue
 
 networks:
