@@ -67,10 +67,30 @@ kubectl get nodes
 
 ### 2. Demoscale in Kubernetes starten
 
-Wenn KIND bereits läuft, starten die folgenden Befehle die vollständige
-Kubernetes-Variante unter Windows PowerShell 5.1. Sie kommen ohne `&&` und
-ohne eine lokale Git-Installation aus: Das technische Release `1.2.10` wird
-als ZIP geladen und anschließend lokal mit Kustomize angewendet.
+Wenn KIND bereits läuft, wählen Sie den Block für Ihr Betriebssystem. Beide
+Varianten kommen ohne eine lokale Git-Installation aus: Das technische
+Release `1.2.10` wird als ZIP geladen und anschließend lokal mit Kustomize
+angewendet.
+
+#### macOS und Linux (zsh/bash)
+
+```bash
+docker compose down && \
+kubectl config use-context docker-desktop && \
+archive="${TMPDIR:-/tmp}/demoscale-1.2.10.zip" && \
+target="${TMPDIR:-/tmp}/demoscale-k8s-1.2.10" && \
+curl -fL "https://github.com/Student007/demoscale/archive/refs/tags/1.2.10.zip" -o "$archive" && \
+mkdir -p "$target" && \
+unzip -oq "$archive" -d "$target" && \
+kubectl apply -k "$target/demoscale-1.2.10/kubernetes" && \
+kubectl -n demoscale wait --for=condition=Available deployment --all --timeout=180s && \
+kubectl -n demoscale get pods -o wide && \
+kubectl -n demoscale port-forward service/dashboard 8080:8080
+```
+
+#### Windows PowerShell 5.1
+
+PowerShell 5.1 unterstützt `&&` nicht. Verwenden Sie dort diesen Block:
 
 ```powershell
 docker compose down
