@@ -19,12 +19,13 @@ Alle Befehle werden im geklonten Projektverzeichnis ausgeführt.
 
 ## Schnellstart mit vier Workern
 
-Die veröffentlichten Images werden automatisch geladen. Starten Sie die Demo
-mit vier Worker-Containern. Dieser Einzeiler kann vollständig kopiert und
-eingefügt werden:
+Die veröffentlichten Images der im Studienheft verwendeten Basisversion
+`1.0.0` werden automatisch geladen. Starten Sie die Demo mit vier
+Worker-Containern:
 
 ```bash
-docker compose up -d --no-build --scale worker=4 && docker compose ps
+docker compose up -d --no-build --scale worker=4
+docker compose ps
 ```
 
 Öffnen Sie anschließend <http://localhost:8080>.
@@ -66,16 +67,29 @@ kubectl get nodes
 
 ### 2. Demoscale in Kubernetes starten
 
-Wenn KIND bereits läuft, startet der folgende Einzeiler die vollständige
-Kubernetes-Variante. Er beendet zuerst Compose, wählt den Docker-Desktop-
-Kontext, wendet die Manifeste an, wartet auf alle Deployments und richtet
-anschließend den Port-Forward ein:
+Wenn KIND bereits läuft, starten die folgenden Befehle die vollständige
+Kubernetes-Variante unter Windows PowerShell 5.1. Sie kommen ohne `&&` und
+ohne eine lokale Git-Installation aus: Das technische Release `1.2.10` wird
+als ZIP geladen und anschließend lokal mit Kustomize angewendet.
 
-```bash
-docker compose down && kubectl config use-context docker-desktop && kubectl apply -k 'https://github.com/Student007/demoscale//kubernetes?ref=1.2.9' && kubectl -n demoscale wait --for=condition=Available deployment --all --timeout=180s && kubectl -n demoscale get pods -o wide && kubectl -n demoscale port-forward service/dashboard 8080:8080
+```powershell
+docker compose down
+if ($LASTEXITCODE -ne 0) { throw "docker compose down ist fehlgeschlagen" }
+kubectl config use-context docker-desktop
+if ($LASTEXITCODE -ne 0) { throw "Kubernetes-Kontext konnte nicht gewechselt werden" }
+$zip = Join-Path $env:TEMP "demoscale-1.2.10.zip"
+$ziel = Join-Path $env:TEMP "demoscale-k8s-1.2.10"
+Invoke-WebRequest "https://github.com/Student007/demoscale/archive/refs/tags/1.2.10.zip" -OutFile $zip
+Expand-Archive $zip -DestinationPath $ziel -Force
+kubectl apply -k (Join-Path $ziel "demoscale-1.2.10\kubernetes")
+if ($LASTEXITCODE -ne 0) { throw "Kubernetes-Manifeste konnten nicht angewendet werden" }
+kubectl -n demoscale wait --for=condition=Available deployment --all --timeout=180s
+if ($LASTEXITCODE -ne 0) { throw "Deployments wurden nicht rechtzeitig bereit" }
+kubectl -n demoscale get pods -o wide
+kubectl -n demoscale port-forward service/dashboard 8080:8080
 ```
 
-Der letzte Teil des Einzeilers hält das Terminal absichtlich geöffnet. Solange
+Der letzte Befehl hält das Terminal absichtlich geöffnet. Solange
 der Port-Forward läuft, ist das Kubernetes-Dashboard unter
 <http://localhost:8080> erreichbar. Beenden Sie den Port-Forward mit
 `Ctrl+C`.
