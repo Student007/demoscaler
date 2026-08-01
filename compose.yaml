@@ -16,7 +16,7 @@ services:
       retries: 10
 
   producer:
-    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-producer-${IMAGE_TAG:-1.2.9}
+    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-producer-${IMAGE_TAG:-1.2.10}
     pull_policy: always
     environment:
       ORCHESTRATOR: compose
@@ -36,7 +36,7 @@ services:
       retries: 10
 
   dashboard:
-    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-dashboard-${IMAGE_TAG:-1.2.9}
+    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-dashboard-${IMAGE_TAG:-1.2.10}
     pull_policy: always
     environment:
       ORCHESTRATOR: compose
@@ -54,7 +54,7 @@ services:
         condition: service_healthy
 
   worker:
-    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-worker-${IMAGE_TAG:-1.2.9}
+    image: ${REGISTRY_USER:-danbu}/${IMAGE_REPOSITORY:-demoscale}:demoscale-worker-${IMAGE_TAG:-1.2.10}
     pull_policy: always
     environment:
       ORCHESTRATOR: compose
